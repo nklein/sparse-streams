@@ -106,3 +106,22 @@
 
   (nst:def-test seek-to-end (:equal "")
     (read-ranges-from-vector abc '((0 3) (23 3)) nil 6)))
+
+(nst:def-test-group binary-input-nested-range-tests (binary-vectors)
+  (nst:def-test read-bytes-from-nested-ranges (:equal "acy")
+    (with-open-stream (in (flexi-streams:make-in-memory-input-stream abc))
+      (with-open-stream (sub1 (sparse-streams:make-sparse-binary-input-stream
+                               in '((0 3) (23 3))))
+        (with-open-stream (sub2 (sparse-streams:make-sparse-binary-input-stream
+                                 sub1 '((0 1) (2 1) (4 1))))
+          (read-bytes-to-string sub2)))))
+
+  (nst:def-test read-sequence-from-nested-ranges (:equal "acy")
+    (with-open-stream (in (flexi-streams:make-in-memory-input-stream abc))
+      (with-open-stream (sub1 (sparse-streams:make-sparse-binary-input-stream
+                               in '((0 3) (23 3))))
+        (with-open-stream (sub2 (sparse-streams:make-sparse-binary-input-stream
+                                 sub1 '((0 1) (2 1) (4 1))))
+          (let* ((arr (make-array 10 :element-type '(unsigned-byte 8)))
+                 (got (read-sequence arr sub2)))
+            (map 'string #'code-char (subseq arr 0 got))))))))
