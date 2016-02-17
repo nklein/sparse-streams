@@ -5,6 +5,8 @@ Sometimes, it can be useful to have a stream which represents only
 certain byte ranges of another stream.  This package provides such
 Gray streams which represent portions of an underlying stream.
 
+The underlying stream must support seeking.
+
 Currently, this package only supports binary input streams
 whose `element-type` is `(unsigned-byte 8)`.
 
@@ -27,6 +29,7 @@ last three letters.
     (let ((alpha (map 'vector #'char-code "abcdefghijklmnopqrstuvwxyz")))
       (with-open-stream (under (flexi-streams:make-in-memory-input-stream
                                   alpha))
+        ;; extract "abcabcxyz"
         (with-open-stream (in (make-sparse-binary-input-stream under
                                                                '((0 3)
                                                                  (0 3)
@@ -36,3 +39,24 @@ last three letters.
             (map 'string #'code-char seq)))))
 
      => "abcabcxyz"
+
+One can use a sparse binary input stream as the underlying stream to
+another sparse binary input stream:
+
+    (let ((alpha (map 'vector #'char-code "abcdefghijklmnopqrstuvwxyz")))
+      (with-open-stream (under (flexi-streams:make-in-memory-input-stream
+                                  alpha))
+        ;; extract "abcxyz"
+        (with-open-stream (in1 (make-sparse-binary-input-stream under
+                                                                '((0 3)
+                                                                  (23 3))))
+          ;; extract "acy"
+          (with-open-stream (in2 (make-sparse-binary-input-stream in1
+                                                                '((0 1)
+                                                                  (2 1)
+                                                                  (4 1))
+            (let ((seq (make-array '(3) :element-type '(unsigned-byte 8))))
+              (read-sequence seq in2)
+              (map 'string #'code-char seq))))
+
+     => "acy"
